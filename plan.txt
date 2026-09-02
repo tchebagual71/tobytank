@@ -1,0 +1,550 @@
+TOBYTANK RAW PRODUCT VISION
+
+This file contains product ideas and technical requirements collected before
+implementation. It is source material, not the authoritative implementation
+roadmap. Codex should convert it into PRODUCT_SPEC.md, ROADMAP.md, AGENTS.md,
+and DEVELOPMENT.md before implementing firmware.
+
+
+This prompt creates a separate `fishtank` firmware for the same hardware, preserving the existing Stickman project. Start Codex from `C:\Users\tobyd\Desktop\esp32\stickman-dev`, then paste the entire block below.
+
+I structured it around a concrete outcome, constraints, acceptance criteria, and validation—the approach recommended in the [official OpenAI model guidance](https://developers.openai.com/api/docs/guides/latest-model).
+
+```text
+Build a complete, standalone ESP-IDF firmware project named `fishtank` for the same Waveshare ESP32-S3-Touch-AMOLED-1.8 device used by the existing `stickman` project.
+
+The finished firmware should turn the 368×448 AMOLED into a beautiful, immersive, hyper-realistic miniature aquarium. The aquarium is sometimes empty. After a randomized empty-tank interval, exactly one newly generated fish must swim naturally into view, remain in the tank for a randomized amount of time, and eventually swim completely out of view. After another randomized empty interval, a completely new fish appears. No fish may ever be reused.
+
+Work autonomously through implementation and non-destructive validation. Do not stop at a plan or prototype. Inspect the repository first, implement the firmware, add tests, build it successfully, and fix problems you encounter. Ask me a question only if progress is genuinely impossible without information I have not supplied.
+
+Project and hardware constraints:
+
+- Create `fishtank` as a new sibling project beside `stickman`.
+- Do not alter the behavior or source of `stickman`.
+- Do not modify `waveshare-board` or `fluidbox-reference`; they are read-only references.
+- Target Waveshare ESP32-S3-Touch-AMOLED-1.8:
+  - ESP32-S3R8
+  - 8 MB octal PSRAM
+  - 16 MB flash
+  - 368×448 AMOLED
+  - RGB565
+- Use ESP-IDF v5.5.5 with C or C++. Do not use Arduino.
+- Use the managed `waveshare/esp32_s3_touch_amoled_1_8` BSP, following the version and initialization patterns already proven in `stickman`.
+- Do not hardcode GPIOs, panel offsets, touch-controller selection, controller registers, or board-revision details. Leave those responsibilities to the managed BSP.
+- Reuse or carefully adapt the proven display architecture from `stickman`: PSRAM framebuffers, internal DMA transfer bands, BSP revision probing, and asynchronous panel completion.
+- Inspect `stickman/AGENTS.md`, `stickman/main/hardware`, `stickman/main/render`, `stickman/sdkconfig.defaults`, and `stickman/main/idf_component.yml` before designing the new implementation.
+- `fluidbox-reference` may be consulted for fixed-timestep simulation, optimized RGB565 rendering, task separation, filtering, and performance measurement, but do not blindly copy it.
+- Do not flash the physical device. Build and host-test only. I will flash it afterward.
+
+Visual goal:
+
+Create the strongest possible illusion of a real, deep, living aquarium within this microcontroller’s limits. Do not make it look like flat clip art, a children’s cartoon, or a basic screensaver. Use efficient 2D and pseudo-3D raster techniques rather than attempting heavyweight desktop 3D rendering.
+
+The aquarium should include:
+
+- A rich dark blue/teal water gradient with convincing depth.
+- Subtle depth haze and color attenuation.
+- A darker lower region and natural aquarium substrate.
+- Procedurally varied stones, gravel, plants, or driftwood arranged into a tasteful scene.
+- Multiple depth layers with gentle parallax.
+- Soft animated light shafts and water-caustic patterns.
+- A restrained surface shimmer or reflection near the top.
+- Slowly drifting suspended particles at different apparent depths.
+- Occasional small bubble streams with natural acceleration and sideways drift.
+- Gentle vignetting and AMOLED-friendly blacks.
+- Subtle water motion throughout the scene even while no fish is present.
+- No menus, labels, debug text, borders, or visible UI in the aquarium view.
+
+Avoid noisy visual clutter. The result should feel calm, cinematic, organic, and believable.
+
+Fish lifecycle:
+
+Implement an explicit state machine resembling:
+
+EMPTY_WAIT → ENTERING → EXPLORING → EXITING → EMPTY_WAIT
+
+Required behavior:
+
+- There must never be more than one fish.
+- The aquarium must spend visible time empty between fish.
+- Choose the next empty interval randomly from a configurable range. Use reasonable defaults such as 15–75 seconds.
+- Generate the next fish only when it is needed.
+- The fish begins fully outside either the left or right edge.
+- It swims smoothly into view; it must never pop into existence onscreen.
+- It explores the tank for a randomized duration, such as 25–100 seconds.
+- Its exploration should include smooth wandering, depth changes, occasional turns, speed changes, brief hovering, and avoidance of screen edges and foreground obstacles.
+- At the end of its stay, choose an exit side and transition naturally toward it.
+- The fish must swim entirely offscreen before it is destroyed and the next empty interval begins.
+- Entry direction, exit direction, depth, path, speed, timing, and behavior must vary.
+- Use smooth steering with bounded acceleration and turning. Avoid abrupt direction changes, teleportation, mechanical straight lines, or visible state discontinuities.
+- Tail-beat frequency and amplitude should respond to swimming speed and acceleration.
+- Pectoral, dorsal, anal, and tail fins should move with coordinated but slightly imperfect organic timing.
+- Body undulation should propagate from head toward the tail.
+- Turns should produce a believable squash/narrowing or banking illusion.
+- Apparent size, saturation, contrast, and blur/dither treatment may vary with depth.
+- The fish should occasionally pass behind or in front of environmental elements where practical.
+
+Every fish must be genuinely new:
+
+Do not satisfy uniqueness by selecting from a finite set of premade sprites, palettes, or fish definitions. Each appearance must be synthesized from a high-dimensional procedural “genome.”
+
+The genome should control at least:
+
+- Overall length, height, and silhouette.
+- Body profile and head-to-tail taper.
+- Snout, forehead, belly, and back curvature.
+- Eye size, iris color, pupil size, placement, and highlight.
+- Mouth placement and shape.
+- Gill/operculum placement and appearance.
+- Tail-peduncle dimensions.
+- Caudal-fin shape: forked, rounded, fan, crescent, pointed, or continuous interpolations between forms.
+- Dorsal, anal, pelvic, and pectoral-fin placement, size, curvature, ray count, and translucency.
+- Primary and secondary body colors.
+- Belly and back color shifts.
+- Iridescent highlight colors.
+- Scale size, spacing, orientation, and highlight intensity.
+- Pattern type and parameters: stripes, spots, mottling, gradients, bands, speckles, edged scales, or layered combinations.
+- Pattern frequency, distortion, rotation, symmetry, and coverage.
+- Fin colors, edge colors, membranes, rays, spots, and gradients.
+- Lateral line, gill markings, eye markings, and optional small accent markings.
+- Swimming cadence, preferred speed, turn responsiveness, curiosity, depth preference, and hover behavior.
+
+Use continuous parameter ranges and layered procedural functions so the result is not merely a small combinatorial catalogue. Reject malformed or visually poor genomes and deterministically regenerate them.
+
+Each fish must have a unique 64-bit or larger identity. Combine a persistent monotonic generation number with device entropy such as `esp_fill_random()` and, where appropriate, a stable device identifier. Feed this identity through a robust deterministic mixing function to seed independent PRNG streams for anatomy, color, pattern, behavior, and motion.
+
+Guarantee that an identity is never reused across ordinary resets or power loss. To reduce NVS wear, reserve identity-number blocks in advance:
+
+- Persist a high-water mark for a future block of IDs.
+- On startup, reserve a new block before using IDs from it.
+- If power is lost, skip the unused portion of that reserved block rather than risk reusing an identity.
+- Do not write NVS for every animation frame or every random decision.
+- Document the uniqueness guarantee and the limits imposed by finite identity space.
+
+Rendering requirements:
+
+- Keep the implementation procedural. Do not use a finite collection of fish sprites.
+- It is acceptable and encouraged to precompute/cache the static aquarium background and the current fish’s masks, pattern maps, or texture information in PSRAM when a fish is created.
+- Use efficient scanline-filled silhouettes, lookup tables, integer/fixed-point arithmetic where useful, and bounded procedural noise.
+- Give the fish convincing volume through directional shading:
+  - darker belly/back transitions where appropriate;
+  - soft body gradients;
+  - a moving specular highlight;
+  - iridescent color shifts;
+  - shaded gill plate;
+  - individually suggested scales or scale rows;
+  - translucent-looking fins using ordered dithering or efficient RGB565 blending;
+  - fin rays and thin highlighted edges;
+  - ambient water tint and depth attenuation.
+- Fish detail must remain readable on the 368×448 AMOLED without shimmering excessively.
+- Avoid per-pixel floating-point work in the hot render loop when a lookup table or cached value is suitable.
+- Use deterministic ordered dithering where RGB565 banding would otherwise be obvious.
+- Prevent integer overflow, out-of-bounds rasterization, and invalid geometry for every allowed genome.
+- Keep clipping centralized and reliable.
+- Prefer visual richness from layered, inexpensive effects over one extremely expensive effect.
+- If a requested effect threatens frame rate, implement the closest convincing approximation and document the tradeoff.
+
+Runtime architecture and performance:
+
+- Separate deterministic simulation/state from rendering and hardware access.
+- Use a fixed simulation timestep independent of render FPS.
+- Publish immutable or safely copied simulation snapshots to the renderer.
+- Keep display transfer from owning or pacing simulation.
+- Use PSRAM intentionally for large framebuffers and cached imagery.
+- Keep DMA-capable transfer storage in internal memory as required by the panel driver.
+- Avoid heap allocation in the steady-state render loop.
+- Allocate the maximum required working memory during initialization or fish creation and reuse it.
+- Include explicit allocation failure handling.
+- Target a stable visual frame rate of at least 20 FPS on the real display, ideally around the 20–25 FPS already demonstrated by `stickman`.
+- Keep simulation responsive at a fixed 60 Hz if feasible, even when rendering is slower.
+- Add low-rate serial telemetry reporting:
+  - render FPS;
+  - lifecycle state;
+  - current fish identity;
+  - time remaining in the current lifecycle state;
+  - free internal memory and PSRAM;
+  - worst or average render time.
+- Do not print every frame.
+
+Optional physical interaction, only after the core aquarium is complete and tested:
+
+- Use the IMU for very subtle environmental parallax, plant sway, particle drift, and a small shift in the water-light direction when the device tilts.
+- Do not rotate the aquarium or make the fish fall under gravity.
+- Touch may create a temporary water ripple or cause the fish to gently veer away.
+- These interactions must remain restrained and must not break the lifecycle scheduler or visual calmness.
+- If adding them materially risks the core result, leave them out and document them as future work.
+
+Suggested internal organization:
+
+- `main/hardware/`: board and display boundary.
+- `main/aquarium/`: lifecycle scheduler and aquarium simulation.
+- `main/fish/`: identity allocation, PRNG, genome generation, validation, and fish motion.
+- `main/render/`: RGB565 canvas primitives, procedural background, fish rasterizer, compositing, dithering, particles, caustics, plants, and bubbles.
+- `main/memory/`: persistent fish-identity block reservation.
+- `main/input/`: optional normalized IMU and touch input.
+- `main/app_main.c`: startup and top-level orchestration.
+
+Choose a simpler organization if it makes the code clearer, but preserve hardware/simulation/rendering separation.
+
+Testing requirements:
+
+Create host-runnable tests for pure logic. At minimum verify:
+
+- A given identity produces the same genome every time.
+- Different consecutive identities produce different complete genome fingerprints.
+- Thousands of generated genomes stay within safe geometry, color, and motion ranges.
+- Genome rejection/regeneration is deterministic.
+- The scheduler never has more than one fish.
+- The scheduler respects configured empty and visible-duration bounds.
+- Entry starts fully offscreen.
+- There is no onscreen positional discontinuity at entry, exploration, exit, or direction changes.
+- Every simulated fish eventually transitions to EXITING and becomes fully offscreen within a bounded timeout.
+- A completed fish identity is not reused.
+- NVS block-reservation logic skips previously reserved IDs after a simulated reboot.
+- Raster primitives clip correctly at all four edges.
+- Rendering representative extreme genomes does not write outside guarded frame/mask buffers.
+- Seeded simulation replay is deterministic.
+
+Also add a host preview or diagnostic mode that can render several representative aquarium frames and a contact sheet of procedurally generated fish to PPM or another dependency-free image format. This is a development artifact, not firmware UI. Use it to visually inspect a meaningful range of silhouettes and patterns while implementing.
+
+Documentation and completion:
+
+- Add a clear `fishtank/README.md` covering architecture, controls, lifecycle timing, uniqueness design, build steps, expected serial output, and manual flash instructions.
+- Add `fishtank/DEVELOPMENT.md` documenting performance decisions, approximations used for realism, test coverage, known limitations, and hardware validation still required.
+- Add a project-local `AGENTS.md` preserving the relevant hardware and safety rules.
+- Keep generated files such as `build`, `managed_components`, `sdkconfig`, `sdkconfig.old`, and `dependencies.lock` untracked.
+- Use `sdkconfig.defaults` for reusable configuration.
+- Ensure the component manifest and partition table fit the device.
+- Do not add Wi-Fi, cloud services, downloaded runtime assets, or API dependencies.
+- Do not erase flash, modify eFuses, or change boot-security settings.
+
+Validation:
+
+Run all host tests and then build with ESP-IDF v5.5.5. In PowerShell, activate it with:
+
+. 'C:\Espressif\tools\Microsoft.v5.5.5.PowerShell_profile.ps1'
+
+Use bounded build parallelism because this Windows host has experienced GCC failures under excessive parallel load:
+
+idf.py set-target esp32s3
+ninja -C build -j4 all
+
+Fix all warnings and errors attributable to the new project. Do not claim physical visual quality or measured on-device FPS without an actual hardware run. Do not flash the board.
+
+Completion means:
+
+- `fishtank` is a buildable standalone firmware project.
+- The aquarium continuously animates whether empty or occupied.
+- Exactly one fish at a time enters from offscreen, explores, and leaves completely.
+- Empty and occupied durations vary within documented bounds.
+- Every appearance uses a newly allocated, non-reused persistent identity and a newly synthesized valid genome.
+- Fish are visibly diverse in anatomy, coloration, markings, fins, and behavior rather than simple palette swaps.
+- Rendering uses convincing depth, shading, caustics, particles, plant movement, bubbles, and organic fish animation.
+- Host tests pass.
+- The ESP-IDF target build succeeds.
+- The existing `stickman`, `waveshare-board`, and `fluidbox-reference` projects remain unchanged.
+
+When finished, give me:
+
+1. A concise summary of what was implemented.
+2. The principal files and architecture.
+3. Host-test and ESP-IDF build results.
+4. Memory and expected performance considerations.
+5. Any visual or hardware behavior that still requires physical tuning.
+6. The exact command I should use to flash and monitor the `fishtank` firmware on COM3, but do not run that command yourself.
+```
+
+
+
+
+Yes—I understand the appeal. The best version isn’t merely an aquarium screensaver. It’s a tiny portal that periodically produces a creature nobody has ever seen before, lets you form a brief relationship with it, and then records the encounter before that fish disappears forever.
+
+The compelling loop is:
+
+**anticipation → arrival reveal → discovery → interaction → attachment → farewell → permanent keepsake**
+
+That can be wonderfully “dopamine-maxxing” without becoming demanding or irritating. It should reward glances and playful interaction, but never punish the owner for ignoring it.
+
+## The strongest version of the concept
+
+I’d frame every fish as a one-time visitor rather than a disposable random sprite:
+
+- Every fish has a globally unique persistent ID.
+- Its appearance, movement, temperament, sounds, and visit duration come from its procedural genome.
+- It arrives only once.
+- During the visit, you gradually discover its characteristics.
+- When it departs, the device saves a compact “memory” of the encounter.
+- The fish never returns, but its portrait remains in a Fishbook.
+
+That makes uniqueness emotionally legible. “Mathematically different parameters” aren’t exciting by themselves; “this shy silver fish with translucent crown fins visited at 11:42 PM, ate twice, and trusted me enough to follow my finger” is.
+
+## Use every capability of the device
+
+### AMOLED: make arrivals theatrical
+
+The AMOLED’s perfect blacks are a major creative advantage. Use darkness and contrast deliberately:
+
+- The empty tank should be genuinely beautiful, not a waiting screen.
+- Before an arrival, introduce subtle environmental foreshadowing: particles change direction, plants lean, distant bubbles stop, or a faint silhouette crosses the background.
+- Let the fish enter as a dark shape before catching the aquarium light.
+- Sweep an iridescent highlight across it during the first close pass, revealing its colors.
+- Rare fish can alter the entire lighting palette temporarily.
+- Deep-water visitors might make the tank nearly black except for bioluminescent markings.
+- Dawn, daylight, sunset, moonlight, and deep-night lighting can follow the RTC.
+- Shift static scenery by a few pixels over long periods and dim during inactivity to reduce AMOLED burn-in.
+
+The reveal is the moment to concentrate visual payoff. Don’t expose the whole fish immediately.
+
+### Touch: create relationships, not buttons
+
+Avoid menus covering the aquarium. Treat the display as glass:
+
+- Tap the water to create a circular pressure ripple.
+- Drag a finger to produce a current trail with disturbed particles.
+- Hold still and a curious fish may approach your fingertip.
+- Shy fish retreat; territorial fish flare their fins; playful fish chase the finger.
+- Slowly stroke alongside the fish and it may become calmer.
+- Double-tap near the surface to drop a limited piece of food.
+- Touch bubbles to pop them.
+- Long-press an empty area to open the Fishbook through a watery transition.
+
+The important trick is personality-dependent responses. The same gesture shouldn’t always produce the same animation.
+
+### IMU: make the aquarium feel physically present
+
+The IMU can turn the device into an object containing water:
+
+- Tilting creates subtle parallax between foreground plants, fish, particles, and the distant background.
+- Bubbles continue rising physically upward relative to the display’s orientation.
+- Loose particles drift with tilt-induced currents.
+- Plants and the fish’s fins respond to gentle movement.
+- A quick rotation produces a visible water surge followed by settling.
+- The fish anticipates the surge and corrects its body orientation.
+- Laying the device flat could switch to a top-down “pond view.”
+- Turning it upside down could reveal a hidden cave or trigger a rare visitor condition.
+
+Keep the effects physically suggestive rather than simulating sloshing water literally. Aggressive motion should startle the fish but never injure it or erase progress.
+
+### Microphone: let the fish notice the room
+
+The microphone offers excellent ambient-toy interactions:
+
+- A sharp tap or clap sends a pressure wave through the tank.
+- Sustained music or speech can gently influence plant and light movement without constantly frightening the fish.
+- Certain fish may respond to a short whistle or rhythmic knock.
+- A secret three-tap pattern could attract unusual nocturnal visitors.
+- Quiet-room duration could encourage timid fish to emerge from shadows.
+- Ambient-noise classification should be conservative so normal conversation doesn’t create constant reactions.
+
+Because the microphone and speaker share audio resources on this board, the implementation should keep one audio task in control and alternate capture/playback safely.
+
+### Speaker: restrained but memorable sound design
+
+Sound should be sparse enough that each event matters:
+
+- Very quiet filtered water ambience.
+- Soft bubbles and occasional substrate clicks.
+- A brief arrival signature derived from the fish genome.
+- Tiny feeding, ripple, and bubble-pop sounds.
+- A distinctive farewell motif.
+- Exceptional fish get exceptional but still tasteful musical stings.
+- Provide silent, ambient, and expressive sound modes.
+- Default to quiet operation and respect nighttime hours.
+
+Procedural sound can mirror the fish: size affects pitch, temperament affects rhythm, and color family can map to timbre.
+
+### RTC: create an ecosystem that changes with real time
+
+Time-based variation multiplies the sense of mystery:
+
+- Morning, afternoon, sunset, night, and deep-night lighting.
+- Different visitor families have preferred arrival periods.
+- Nocturnal fish use bioluminescence.
+- Dawn fish produce reflective silver and gold flashes.
+- Weekend or seasonal palettes can appear without requiring internet.
+- Rare “conditions” can combine time, orientation, quietness, and interaction history.
+- Fish can sleep, hover, hunt particles, or become more active depending on the hour.
+
+The RTC needs a way to receive correct time. Wi-Fi/NTP is the cleanest automatic option; a small touch-based time-setting screen could preserve offline use.
+
+### Wi-Fi: enhance the toy without making it cloud-dependent
+
+The aquarium should remain fully functional offline. Once Wi-Fi provisioning exists, networking could add:
+
+- Automatic NTP time synchronization.
+- Local weather influencing aquarium lighting and visitor probabilities.
+- A local web gallery for viewing Fishbook entries from a phone.
+- Downloading firmware-defined seasonal events, without downloading premade fish.
+- Sharing a fish’s compact genome code or portrait with another device.
+- A “same ocean” feature where two devices exchange visitor postcards, while each actual fish remains unique.
+- Optional daily statistics with no account requirement.
+
+I would avoid continuous cloud AI, mandatory accounts, or anything that makes the aquarium stop working when the network is unavailable.
+
+### PSRAM and flash: use them for polish
+
+The 8 MB PSRAM provides room for much richer rendering than simple direct-drawn primitives:
+
+- Double RGB565 framebuffers.
+- A cached static aquarium background.
+- Multiple parallax layers.
+- A per-fish body mask, normal/shading map, pattern map, and fin masks.
+- Cached caustic/noise fields.
+- Particle and bubble pools.
+- A generated Fishbook portrait.
+- Temporary transition buffers.
+
+Rather than recomputing every scale every frame, generate the detailed fish texture once when the visitor is created, then deform or composite it efficiently during animation.
+
+The 16 MB flash can hold carefully selected environmental textures, lookup tables, fonts, and sound samples—but the fish themselves should remain procedural.
+
+### microSD: optional long-term Fishbook
+
+If a card is installed:
+
+- Save a full-resolution portrait of every visitor.
+- Store encounter metadata and memorable events.
+- Export a browsable HTML gallery.
+- Save short frame sequences for especially rare arrivals.
+- Import aquarium themes, sound packs, or background habitats.
+- Keep the main firmware independent of the card so removal never breaks it.
+
+Without an SD card, NVS should retain compact records for a bounded number of recent or favorite fish.
+
+## Make procedural uniqueness noticeable
+
+Pure randomness often creates bland or malformed results. The fish generator should use a hierarchy:
+
+1. Choose a coherent ecological archetype.
+2. Generate correlated anatomy appropriate to that archetype.
+3. Generate a palette with controlled contrast.
+4. Layer one or more markings.
+5. Add exceptional traits at rarity-weighted probabilities.
+6. Validate silhouette, contrast, fin placement, and animation safety.
+7. Assign personality and movement that complement the anatomy.
+
+For example, a long-bodied fish should generally undulate differently from a tall disc-shaped fish. Large translucent fins imply slower, more graceful motion. Streamlined fish should accelerate faster. Deep-water coloration should correlate with behavior and lighting.
+
+Fish should be unique in dimensions users perceive:
+
+- Silhouette
+- Face
+- Fin architecture
+- Pattern
+- Color
+- Movement
+- Temperament
+- Sound
+- Arrival behavior
+- Interaction history
+
+A million imperceptibly different scale seeds would technically be unique but wouldn’t feel unique.
+
+## The Fishbook is the retention engine
+
+The collection shouldn’t be a sterile grid of generated numbers. Each encounter card could contain:
+
+- Procedural portrait
+- Unique name
+- Fish ID
+- Arrival date and time
+- “Observed for 2m 14s”
+- Temperament discovered during the visit
+- Favorite depth
+- Reaction to the owner
+- Rarity traits
+- Interaction icons
+- A one-sentence generated field note
+
+Example:
+
+> **Glassfin Lanternling #0001842**  
+> Visited during a quiet rain at 11:47 PM. Initially timid. Approached the glass after following three slow currents.
+
+Names and field notes can be assembled locally from grammar tables—no AI service required.
+
+Allow perhaps 12 favorites in internal storage, with the full archive on microSD. Never make the user choose under time pressure while the fish is leaving; save every compact record automatically.
+
+## Ethical “dopamine-maxxing”
+
+The enjoyable reward mechanisms are:
+
+- Variable arrival timing
+- Anticipatory environmental cues
+- Staged visual reveals
+- Rare but coherent traits
+- Personal interaction responses
+- Discoverable secrets
+- Permanent encounter records
+- Occasional spectacular events
+- Near-zero effort to participate
+
+I would deliberately avoid:
+
+- Punishing missed days
+- Fish becoming sick when ignored
+- Aggressive notifications
+- Fake scarcity countdowns
+- Requiring repetitive feeding
+- Currency or grind
+- Extremely low unbounded rare-drop odds
+- Making the user keep the screen active to avoid losing something
+
+Use a hidden “wonder guarantee”: after a reasonable number of ordinary visitors, increase the chance of a visually extraordinary one. The user doesn’t need to know it as a pity counter; it simply prevents the experience from becoming monotonous.
+
+## High-impact special encounters
+
+A small number of procedural event families could create memorable moments:
+
+- **Abyssal arrival:** the tank darkens and a bioluminescent fish slowly emerges.
+- **Storm visitor:** local weather or device motion produces energetic currents.
+- **Moon fish:** appears only during late-night hours with silver caustics.
+- **Glass fish:** nearly transparent body revealing subtle internal structures.
+- **Tiny giant:** an unusually large fish passes very close to the “glass,” filling the display.
+- **Curious visitor:** follows the owner’s finger and looks directly outward.
+- **Musical fish:** reacts to rhythmic taps with colored pulses.
+- **Camouflage fish:** initially resembles the rocks before revealing itself.
+- **Mirror fish:** iridescence changes dramatically with device tilt.
+- **Bubble rider:** enters hidden inside a large bubble cluster.
+- **Farewell spectacle:** a highly bonded visitor circles once, approaches the glass, then disappears into darkness.
+
+These should remain procedurally parameterized, not fixed premade characters.
+
+## A better progression model
+
+The aquarium can have three overlapping loops:
+
+| Timescale | Reward |
+|---|---|
+| Seconds | Ripples, eye contact, bubbles, fin reactions, parallax |
+| Minutes | New visitor, personality discovery, feeding, farewell |
+| Days | Fishbook growth, rare conditions, habitat changes, secrets |
+
+Habitat evolution could be driven by encounters rather than grinding:
+
+- After 10 visitors, a new plant begins growing.
+- A certain color family leaves behind a matching pebble.
+- Nocturnal encounters gradually illuminate a cave.
+- Favorite fish portraits influence subtle aquarium color accents.
+- The environment becomes a visual history of past visitors.
+
+That produces long-term attachment while still honoring the rule that every fish is new and never returns.
+
+## My recommended product direction
+
+Keep the central constraint: **one hero fish, one visit, never repeated**.
+
+Then add these in priority order:
+
+1. Exceptional fish rendering and animation.
+2. Personality-dependent touch behavior.
+3. Staged arrival and farewell sequences.
+4. Persistent Fishbook with portraits and encounter stories.
+5. RTC-based lighting and visitor ecology.
+6. IMU-driven depth/parallax and physical water response.
+7. Tasteful procedural sound.
+8. Microphone secrets and environmental reactions.
+9. Habitat evolution.
+10. Optional Wi-Fi, weather, sharing, and microSD archive.
+
+That transforms it from “a random fish appears sometimes” into a genuinely charming idle toy: calm enough to live on a desk, responsive enough to fiddle with, and mysterious enough that you keep glancing over to see who arrived.
