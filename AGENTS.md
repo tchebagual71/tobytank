@@ -1,0 +1,21 @@
+# TobyTank Engineering Rules
+
+- Target Waveshare ESP32-S3-Touch-AMOLED-1.8, ESP32-S3R8, 8 MB PSRAM, 16 MB flash, 368x448 RGB565 AMOLED.
+- Use ESP-IDF v5.5.5, C/C++, and FreeRTOS. Never use Arduino.
+- Use managed BSP `waveshare/esp32_s3_touch_amoled_1_8`.
+- Never invent GPIOs, registers, panel offsets, or controller selections.
+- Board revision probing and hardware selection belong to the managed BSP.
+- The sibling Stickman and reference repositories are read-only.
+- Only implement the current approved `ROADMAP.md` milestone.
+- Add or update executable tests before production behavior changes.
+- Keep simulation deterministic and independent of rendering/hardware.
+- Use a fixed simulation timestep and immutable rendering snapshots.
+- Use PSRAM intentionally for large buffers and internal DMA memory for panel transfers.
+- Handle allocation and hardware failures explicitly.
+- Avoid allocation in steady-state animation loops.
+- Run host tests and an ESP-IDF build before declaring a milestone done.
+- Use bounded build parallelism: `ninja -C build -j4 all`.
+- Do not flash unless the user explicitly authorizes that hardware checkpoint.
+- Never erase the full flash, alter eFuses, or change boot security.
+- Do not commit build output, managed components, `sdkconfig`, `dependencies.lock`, firmware binaries, or other generated files.
+- Keep `README.md`, `ROADMAP.md`, and `DEVELOPMENT.md` accurate after changes.

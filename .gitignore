@@ -1,0 +1,40 @@
+build/
+managed_components/
+sdkconfig
+sdkconfig.old
+dependencies.lock
+.cache/
+
+# ESP-IDF and firmware outputs
+*.bin
+*.elf
+*.map
+*.hex
+*.uf2
+*.img
+bootloader/
+partition_table/
+flasher_args.json
+flash_project_args
+project_description.json
+
+# Host test artifacts
+*.o
+*.obj
+*.exe
+*.out
+*.gcda
+*.gcno
+*.profraw
+*.profdata
+test-results/
+coverage/
+tools/preview/out/
+tools/preview/*.ppm
+tools/preview/*.png
+
+# Local editor and OS noise
+.DS_Store
+Thumbs.db
+*.swp
+*.tmp
