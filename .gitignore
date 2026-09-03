@@ -29,6 +29,7 @@ project_description.json
 *.profdata
 test-results/
 coverage/
+__pycache__/
 tools/preview/out/
 tools/preview/*.ppm
 tools/preview/*.png
