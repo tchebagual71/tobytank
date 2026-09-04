@@ -9,6 +9,7 @@ $preview = Join-Path $root "tools\preview"
 
 $exe = Invoke-HostBuild -Sources @(
     (Join-Path $PSScriptRoot "environment_host_test.c"),
+    (Join-Path $main "fish\prng.c"),
     (Join-Path $main "aquarium\environment.c"),
     (Join-Path $main "render\canvas.c"),
     (Join-Path $main "render\background.c"),

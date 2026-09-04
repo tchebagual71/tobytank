@@ -1,6 +1,7 @@
 #include "render/effects.h"
 
 #include <math.h>
+#include <stdint.h>
 
 /*
  * Light and water effects layered over the background. Every loop here pre
@@ -128,4 +129,51 @@ void tobytank_effects_draw(const tobytank_canvas_t *canvas,
     draw_shafts(canvas, snapshot);
     draw_caustics(canvas, snapshot);
     draw_surface_shimmer(canvas, snapshot);
+}
+
+void tobytank_effects_draw_interactions(const tobytank_canvas_t *canvas,
+                                        const tobytank_env_snapshot_t *snapshot,
+                                        const tobytank_interactions_t *interactions)
+{
+    if (canvas == NULL || canvas->pixels == NULL || snapshot == NULL ||
+        interactions == NULL || !interactions->ripple_active ||
+        canvas->width <= 0 || canvas->height <= 0 ||
+        interactions->ripple_strength <= 0.0f) {
+        return;
+    }
+
+    const float radius = interactions->ripple_radius;
+    const float band = 4.8f + radius * 0.045f;
+    const float inner = radius - band;
+    const float outer = radius + band;
+    const float inner2 = inner > 0.0f ? inner * inner : 0.0f;
+    const float outer2 = outer * outer;
+    int left = (int)floorf(interactions->ripple_x - outer);
+    int right = (int)ceilf(interactions->ripple_x + outer);
+    int top = (int)floorf(interactions->ripple_y - outer);
+    int bottom = (int)ceilf(interactions->ripple_y + outer);
+    if (left < 0) left = 0;
+    if (top < 0) top = 0;
+    if (right >= canvas->width) right = canvas->width - 1;
+    if (bottom >= canvas->height) bottom = canvas->height - 1;
+
+    const uint8_t peak = (uint8_t)(64.0f * interactions->ripple_strength);
+    for (int y = top; y <= bottom; ++y) {
+        const float dy = (float)y - interactions->ripple_y;
+        uint16_t *row = &canvas->pixels[y * canvas->width];
+        for (int x = left; x <= right; ++x) {
+            const float dx = (float)x - interactions->ripple_x;
+            const float distance2 = dx * dx + dy * dy;
+            if (distance2 < inner2 || distance2 > outer2) {
+                continue;
+            }
+            const float middle = radius * radius;
+            const float distance = fabsf(distance2 - middle) / (outer2 - inner2);
+            const float alpha = (1.0f - distance) * (1.0f - distance) * (float)peak;
+            if (alpha > 0.5f) {
+                tobytank_canvas_blend_at(&row[x], snapshot->haze[0], snapshot->haze[1],
+                                         snapshot->haze[2], (uint8_t)alpha);
+            }
+        }
+    }
 }

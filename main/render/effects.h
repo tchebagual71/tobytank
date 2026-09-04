@@ -1,6 +1,7 @@
 #pragma once
 
 #include "aquarium/environment.h"
+#include "aquarium/interactions.h"
 #include "render/canvas.h"
 
 /*
@@ -10,3 +11,7 @@
  */
 void tobytank_effects_draw(const tobytank_canvas_t *canvas,
                            const tobytank_env_snapshot_t *snapshot);
+
+void tobytank_effects_draw_interactions(const tobytank_canvas_t *canvas,
+                                        const tobytank_env_snapshot_t *snapshot,
+                                        const tobytank_interactions_t *interactions);

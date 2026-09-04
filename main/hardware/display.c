@@ -19,6 +19,7 @@ static const char *TAG = "tobytank_display";
 
 static esp_lcd_panel_handle_t s_panel;
 static esp_lcd_panel_io_handle_t s_io;
+static esp_lcd_touch_handle_t s_touch;
 static SemaphoreHandle_t s_free_buffers;
 static SemaphoreHandle_t s_transfer_done;
 static uint16_t *s_frames[TOBYTANK_DISPLAY_BUFFER_COUNT];
@@ -56,8 +57,7 @@ esp_err_t tobytank_display_init(void)
      * proven reference pattern that lets the BSP choose the right display gap
      * and reset sequence.
      */
-    esp_lcd_touch_handle_t touch = NULL;
-    esp_err_t ret = bsp_touch_new(NULL, &touch);
+    esp_err_t ret = bsp_touch_new(NULL, &s_touch);
     if (ret != ESP_OK) {
         ESP_LOGE(TAG, "BSP touch/revision probe failed: %s", esp_err_to_name(ret));
         return ret;
@@ -230,6 +230,11 @@ esp_err_t tobytank_display_submit_frame(const uint16_t *frame)
         return ESP_FAIL;
     }
     return pending;
+}
+
+esp_lcd_touch_handle_t tobytank_display_touch_handle(void)
+{
+    return s_touch;
 }
 
 size_t tobytank_display_frame_bytes(void)

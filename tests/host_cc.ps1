@@ -34,7 +34,8 @@ function Invoke-HostBuild {
         [Parameter(Mandatory = $true)][string] $ExeName
     )
 
-    $outDir = Get-HostOutputDir
+    $outDir = Join-Path (Get-HostOutputDir) ([System.IO.Path]::GetFileNameWithoutExtension($ExeName))
+    New-Item -ItemType Directory -Force -Path $outDir | Out-Null
     $exe = Join-Path $outDir $ExeName
 
     $gcc = Get-Command gcc -ErrorAction SilentlyContinue

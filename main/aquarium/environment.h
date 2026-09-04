@@ -2,6 +2,9 @@
 
 #include <stdint.h>
 
+#include "aquarium/interactions.h"
+#include "fish/prng.h"
+
 /*
  * Deterministic aquarium environment.
  *
@@ -103,7 +106,7 @@ typedef struct {
 
 typedef struct {
     uint64_t seed;
-    uint64_t rng;
+    tobytank_prng_t rng;
     tobytank_env_snapshot_t scene;
 } tobytank_environment_t;
 
@@ -116,6 +119,11 @@ void tobytank_environment_init(tobytank_environment_t *environment,
 
 /* Advance one fixed timestep. dt_seconds should be TOBYTANK_ENV_TIMESTEP_SECONDS. */
 void tobytank_environment_update(tobytank_environment_t *environment, float dt_seconds);
+
+void tobytank_environment_update_with_interactions(
+    tobytank_environment_t *environment,
+    float dt_seconds,
+    const tobytank_interactions_t *interactions);
 
 /* Copy the current state into an immutable snapshot for rendering. */
 void tobytank_environment_snapshot(const tobytank_environment_t *environment,

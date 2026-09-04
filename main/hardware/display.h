@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "esp_err.h"
+#include "esp_lcd_touch.h"
 
 #define TOBYTANK_DISPLAY_WIDTH 368
 #define TOBYTANK_DISPLAY_HEIGHT 448
@@ -35,5 +36,6 @@ uint16_t *tobytank_display_acquire_frame(void);
  * transfer is reported here, since the caller has no other way to see it.
  */
 esp_err_t tobytank_display_submit_frame(const uint16_t *frame);
+esp_lcd_touch_handle_t tobytank_display_touch_handle(void);
 size_t tobytank_display_frame_bytes(void);
 size_t tobytank_display_band_bytes(void);

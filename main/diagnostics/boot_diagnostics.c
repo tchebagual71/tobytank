@@ -8,7 +8,9 @@
 #include "esp_log.h"
 #include "esp_psram.h"
 #include "esp_system.h"
+#include "fish/genome.h"
 #include "hardware/display.h"
+#include "memory/identity_store.h"
 #include "spi_flash_mmap.h"
 
 static const char *TAG = "tobytank_diag";
@@ -43,6 +45,37 @@ void tobytank_boot_diagnostics_print(void)
              (unsigned)TOBYTANK_DISPLAY_FRAME_BYTES,
              TOBYTANK_DISPLAY_BUFFER_COUNT,
              (unsigned)TOBYTANK_DISPLAY_BAND_BYTES);
+}
+
+/* A fixed identity used only to prove genome generation works on the device.
+   It is outside any reserved block, so no real visitor is ever spent on it. */
+#define TOBYTANK_GENOME_SELF_CHECK_IDENTITY 0xFFFFFFFFFFFFFF01ULL
+
+void tobytank_boot_diagnostics_log_identity(void)
+{
+    ESP_LOGI(TAG, "identity block: next=%llu remaining=%llu counter=%llu history_lost=%d",
+             (unsigned long long)tobytank_identity_store_peek(),
+             (unsigned long long)tobytank_identity_store_remaining(),
+             (unsigned long long)tobytank_identity_store_counter(),
+             tobytank_identity_store_history_lost());
+
+    tobytank_genome_t genome;
+    if (!tobytank_genome_generate(&genome, TOBYTANK_GENOME_SELF_CHECK_IDENTITY)) {
+        ESP_LOGE(TAG, "genome self-check failed: no variant passed validation");
+        return;
+    }
+
+    float width = 0.0f;
+    float height = 0.0f;
+    tobytank_genome_extent(&genome, &width, &height);
+    ESP_LOGI(TAG, "genome self-check: fingerprint=0x%016llx variant=%u body=%.1fx%.1f "
+                  "extent=%.0fx%.0f caudal=%u pattern=%u speed=%.1f cadence=%.2f",
+             (unsigned long long)tobytank_genome_fingerprint(&genome),
+             (unsigned)genome.variant,
+             (double)genome.body_length, (double)genome.body_depth,
+             (double)width, (double)height,
+             (unsigned)genome.caudal_type, (unsigned)genome.pattern_type,
+             (double)genome.preferred_speed, (double)genome.swim_cadence);
 }
 
 void tobytank_boot_diagnostics_log_health(void)

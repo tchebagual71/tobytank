@@ -2,14 +2,32 @@ idf_component_register(
     SRCS
         "app_main.c"
         "aquarium/environment.c"
+        "aquarium/interactions.c"
+        "aquarium/lifecycle.c"
         "diagnostics/boot_diagnostics.c"
+        "fish/behavior.c"
+        "fish/genome.c"
+        "fish/genome_validate.c"
+        "fish/identity.c"
+        "fish/motion.c"
+        "fish/portrait.c"
+        "fish/prng.c"
         "hardware/board.c"
         "hardware/display.c"
+        "input/imu.c"
+        "input/motion_filter.c"
+        "input/touch.c"
+        "memory/identity_store.c"
         "render/background.c"
         "render/canvas.c"
+        "render/composite.c"
+        "render/dither.c"
         "render/effects.c"
+        "render/fish_cache.c"
+        "render/fish_rasterizer.c"
         "render/particles.c"
         "render/renderer.c"
+        "sim/snapshot.c"
     INCLUDE_DIRS
         "."
     REQUIRES
@@ -21,6 +39,7 @@ idf_component_register(
         esp_timer
         esp_lcd
         esp_lcd_touch
+        nvs_flash
 )
 
 target_compile_options(${COMPONENT_LIB} PRIVATE -Wall -Wextra -Werror)

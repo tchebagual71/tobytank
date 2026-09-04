@@ -1,5 +1,6 @@
 #include "diagnostics/boot_diagnostics.h"
 #include "hardware/board.h"
+#include "memory/identity_store.h"
 #include "render/renderer.h"
 
 #include "esp_err.h"
@@ -20,6 +21,20 @@ void app_main(void)
         while (true) {
             vTaskDelay(pdMS_TO_TICKS(5000));
         }
+    }
+
+    /*
+     * Identity persistence must be ready before the renderer's lifecycle can
+     * admit a visitor. A failure here is not fatal to the aquarium: the tank
+     * continues to render and the lifecycle simply stays empty.
+     */
+    ret = tobytank_identity_store_init();
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "Identity persistence unavailable: %s. No visitor can be "
+                      "admitted until this is resolved.",
+                 esp_err_to_name(ret));
+    } else {
+        tobytank_boot_diagnostics_log_identity();
     }
 
     ret = tobytank_renderer_init();
